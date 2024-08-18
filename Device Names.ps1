@@ -2,6 +2,29 @@
 # 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv -UserList '.\New Text Document.txt'
 # 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv
 
+<#
+	.SYNOPSIS
+		A brief description of the MFAAzureScript.ps1 file.
+	
+	.DESCRIPTION
+		A description of the file.
+	
+	.PARAMETER Path
+		A description of the Path parameter.
+	
+	.PARAMETER UserList
+		A description of the UserList parameter.
+	
+	.NOTES
+		===========================================================================
+		Created on:   	8/16/2024 14:03
+		Created by:   	Noah Rincon
+		Usage:
+			.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv -UserList '.\New Text Document.txt'
+ 			.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv
+		===========================================================================
+#>
+
 param ($Path, $UserList)
 
 #Check if parameters are valid
@@ -14,9 +37,11 @@ if ((Test-Path $Path) -eq $False)
 
 
 function Tenant-Connect {
+	#Check if module is installed
 	if (Get-Module -ListAvailable -Name Microsoft.Graph) {
     		Write-Host "Module exists, connecting to tenant"
-     		try { 
+     		try {
+       			#Connect to Azure Tenant
        			Connect-MgGraph -Scopes 'UserAuthenticationMethod.Read.All'
 	  	}
     		catch {
@@ -25,9 +50,11 @@ function Tenant-Connect {
 	 	}
 	}
 	else {
+ 		#Install Mg Graph module
 		Write-Host "Module does not exist, installing module"
   		Install-Module Microsoft.Graph -Scope CurrentUser -Repository PSGallery -Force
          	try { 
+	  		#Connect to Azure Tenant
        			Connect-MgGraph -Scopes 'UserAuthenticationMethod.Read.All'
 	  	}
     		catch {
@@ -41,24 +68,24 @@ function Get-DeviceNames {
 	if ($UserList -eq $null)
  		
 		{
-		# Display the custom objects
 		#Get all Azure users
 		$users = get-mguser -All
 	}
 	else {
-		#Provide list of users
+		#Place users from .text file in $users variable
 		$users = ForEach ($mguser in $(get-content -Path $UserList)) {
-		get-mguser -userid $mguser
+			get-mguser -userid $mguser
 		}
 	}
+ 	
 	$results=@();
 	Write-Host  "`nRetreived $($users.Count) users";
 	#loop through each user account
 	foreach ($user in $users) {
-	
+		#Get all MFA data from users
 		$MFAData=Get-MgUserAuthenticationMethod -UserId $user.UserPrincipalName #-ErrorAction SilentlyContinue
 
-		#check authentication methods for each user
+		#Define authentication methods for each user
 		ForEach ($method in $MFAData) {
 			$myObject = [PSCustomObject]@{
 				user               		= "-"
@@ -77,6 +104,7 @@ function Get-DeviceNames {
 				DeviceTag		  		= "-"
 			}
 
+   			#Check if user can authenticate with email
 			$myobject.user = $user.UserPrincipalName;
 			Switch ($method.AdditionalProperties["@odata.type"]) {
 				"#microsoft.graph.emailAuthenticationMethod"  {
@@ -84,10 +112,12 @@ function Get-DeviceNames {
 				$myObject.email = $true
 				$myObject.MFAstatus = "Enabled"
 			}
+   		   		#Check if user can authenticate with fido2
 				"#microsoft.graph.fido2AuthenticationMethod" {
 				$myObject.fido2 = $true
 				$myObject.MFAstatus = "Enabled"
 			}
+      				#Check if user can authenticate with password
 				"#microsoft.graph.passwordAuthenticationMethod"                {
 				$myObject.password = $true
 					# When only the password is set, then MFA is disabled.
@@ -96,6 +126,7 @@ function Get-DeviceNames {
 						$myObject.MFAstatus = "Disabled"
 					}
 			}
+      				#Check if user can authenticate with phone
 				"#microsoft.graph.phoneAuthenticationMethod"  {
 				$myObject.phone = $true
 				$myObject.MFAstatus = "Enabled"
@@ -107,26 +138,28 @@ function Get-DeviceNames {
 				$myObject.deviceTag = $method.AdditionalProperties.deviceTag
 				$myObject.MFAstatus = "Enabled"
 			}
-		
+			   	#Check if user can authenticate with Google Authenticator or Oath OTP
 				"#microsoft.graph.softwareOathAuthenticationMethod"  {
 				$myObject.Id = $method.Id
 				$myObject.softwareoath = "Oath OTP Enabled"
 				$myObject.MFAstatus = "Enabled"
 			}
+      				#Check if user can authenticate with temp pass
 				"#microsoft.graph.temporaryAccessPassAuthenticationMethod"  {
 				$myObject.tempaccess = $true
 				$myObject.MFAstatus = "Enabled"
 			}
+      				#Check if user can authenticate with HelloBusiness
 				"#microsoft.graph.windowsHelloForBusinessAuthenticationMethod"  {
 				$myObject.hellobusiness = $true
 				$myObject.MFAstatus = "Enabled"
 			}
 			}
+   		#Place results in custom objects list
 		$results+= $myObject;
 		}
 	}
- 
-	# Display the custom objects
+	#Export custom objects list as a CSV
 	$results | export-csv -NoTypeInformation -path $Path
 }
 
