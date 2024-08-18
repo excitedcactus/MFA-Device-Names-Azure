@@ -5,6 +5,6 @@ https://activedirectorypro.com/mfa-status-powershell/
 
 Usage:
 
-.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv -UserList '.\New Text Document.txt'
+.\getMFA3.ps1 -Path C:\Users\admin\Desktop\results.csv
 
-.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv
+.\getMFA3.ps1 -Path C:\Users\admin\Desktop\results.csv -UserList C:\Users\admin\Desktop\users.txt
