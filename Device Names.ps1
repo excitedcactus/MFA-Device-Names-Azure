@@ -1,23 +1,51 @@
+# Usage:
+# 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv -UserList '.\New Text Document.txt'
+# 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv
+
 param ($Path, $UserList)
 
-if ( ($Path -eq $null) -or ($Path -eq "") -or ($Path -eq " "))
-{
+#Check if parameters are valid
+if ((Test-Path $Path) -eq $False)
+	{
 	Write-Host "-Path not valid, please provide a filepath to export CSV to."
 	Write-Host "-UserList, to optionally add a list of users to save time. By default grabs a list of every user in the tenant."
+ 	exit
 }
-else
-{
-	#Connect MgGraph
-	Connect-MgGraph -Scopes 'UserAuthenticationMethod.Read.All' -NoWelcome
 
+
+function Tenant-Connect {
+	if (Get-Module -ListAvailable -Name Microsoft.Graph) {
+    		Write-Host "Module exists, connecting to tenant"
+     		try { 
+       			Connect-MgGraph -Scopes 'UserAuthenticationMethod.Read.All'
+	  	}
+    		catch {
+      			Write-Host "Error occurred"
+	 		Wrote-Host $_.Exception.Message
+	 	}
+	}
+	else {
+		Write-Host "Module does not exist, installing module"
+  		Install-Module Microsoft.Graph -Scope CurrentUser -Repository PSGallery -Force
+         	try { 
+       			Connect-MgGraph -Scopes 'UserAuthenticationMethod.Read.All'
+	  	}
+    		catch {
+      			Write-Host "Error occurred"
+	 		Wrote-Host $_.Exception.Message
+	 	}
+	}
+ }
+
+function Get-DeviceNames {
 	if ($UserList -eq $null)
-	{
+ 		
+		{
 		# Display the custom objects
 		#Get all Azure users
 		$users = get-mguser -All
 	}
-	else
-	{
+	else {
 		#Provide list of users
 		$users = ForEach ($mguser in $(get-content -Path $UserList)) {
 		get-mguser -userid $mguser
@@ -27,8 +55,8 @@ else
 	Write-Host  "`nRetreived $($users.Count) users";
 	#loop through each user account
 	foreach ($user in $users) {
-
-	$MFAData=Get-MgUserAuthenticationMethod -UserId $user.UserPrincipalName #-ErrorAction SilentlyContinue
+	
+		$MFAData=Get-MgUserAuthenticationMethod -UserId $user.UserPrincipalName #-ErrorAction SilentlyContinue
 
 		#check authentication methods for each user
 		ForEach ($method in $MFAData) {
@@ -97,6 +125,10 @@ else
 		$results+= $myObject;
 		}
 	}
+ 
 	# Display the custom objects
-	$results | export-csv -path $Path
+	$results | export-csv -NoTypeInformation -path $Path
 }
+
+Tenant-Connect
+Get-DeviceNames
