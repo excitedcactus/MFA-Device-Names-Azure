@@ -1,7 +1,3 @@
-# Usage:
-# 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv -UserList '.\New Text Document.txt'
-# 	.\getMFA3.ps1 -Path C:\Users\nrinc\Desktop\bot2.csv
-
 <#
 	.SYNOPSIS
 		A brief description of the MFAAzureScript.ps1 file.
